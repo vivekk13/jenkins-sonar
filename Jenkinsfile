@@ -1,40 +1,25 @@
 pipeline{
-    agent any
+    agent any 
+    environment{
+        VERSION = "${env.BUILD_ID}"
+    }
     stages{
-        stage("Sonarqube analysis"){
+        stage("sonar quality check"){
             steps{
                 script{
-                withSonarQubeEnv(credentialsId: 'new_sonar') {
-                      sh 'mvn sonar:sonar'
-                  }
+                    withSonarQubeEnv(credentialsId: 'SonarQube') {
+                            sh "mvn sonar:sonar"
+                    }
 
-                   timeout(5) {
+                    timeout(time: 1, unit: 'HOURS') {
                       def qg = waitForQualityGate()
                       if (qg.status != 'OK') {
                            error "Pipeline aborted due to quality gate failure: ${qg.status}"
                       }
                     }
-                }
+                    sh "mvn clean install"
+                }  
             }
-        }
-        
-        stage("Pushing the artifact to nexus"){
-            steps{
-                script{
-                    sh 'mvn clean deploy'
-                }
-            }
-        }
-    }
-    post{
-        always{
-          cleanWs()
-        }
-        success{
-            echo "========pipeline executed successfully ========"
-        }
-        failure{
-            echo "========pipeline execution failed========"
         }
     }
 }
